@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#137a4b">
+<title>Sudoku Master AI</title>
+<style>
+:root{--site-primary:#137a4b;--site-background:#f2f8f4;--surface:#fff;--ink:#15291e;--muted:#63756a;--line:#dce8df;--green:#137a4b;--softgreen:#e5f6eb;--red:#c83e42;--softred:#ffeded}
+*{box-sizing:border-box}
+body{margin:0;background:var(--site-background);color:var(--ink);font-family:Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0}
+#app{min-height:100vh;padding:22px max(16px,calc((100vw - 1120px)/2))}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:46px;height:46px;border-radius:15px;background:var(--green);color:white;display:grid;place-items:center;font-size:23px;font-weight:900}
+.brand h1{font-size:22px;margin:0}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.top-pill{border:1px solid var(--line);padding:8px 12px;border-radius:99px;font-size:12px;color:var(--green);font-weight:700;background:white}
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 12px 34px #123b2910}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.panel h2{font-size:17px;margin:0}
+.sub{font-size:12px;color:var(--muted);margin-top:5px}
+.board-wrap{max-width:590px;margin:auto}
+.board{display:grid;grid-template-columns:repeat(9,1fr);border:2px solid var(--green);border-radius:8px;overflow:hidden;aspect-ratio:1;background:white}
+.cell{min-width:0;aspect-ratio:1;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:transparent;color:var(--ink);font-size:clamp(16px,3.5vw,25px);font-weight:600;text-align:center;padding:0;outline-offset:-3px}
+.cell:nth-child(3n){border-right:2px solid var(--green)}
+.cell:nth-child(9n){border-right:0}
+.cell:nth-child(n+19):nth-child(-n+27),.cell:nth-child(n+46):nth-child(-n+54){border-bottom:2px solid var(--green)}
+.cell:nth-child(n+73){border-bottom:0}
+.cell.given{font-weight:850;background:#f7fbf8}
+.cell.solved{color:#159653;background:var(--softgreen)}
+.cell.conflict{color:var(--red)!important;background:var(--softred)!important}
+.cell.selected{outline:2px solid var(--green);background:var(--softgreen)}
+.board-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{padding:11px 15px;border-radius:12px;background:#f7fbf8;color:var(--ink);font-weight:700;font-size:13px;border:1px solid var(--line)}
+.btn.primary{background:var(--green);color:white;border-color:var(--green)}
+.btn.light{background:var(--softgreen);color:var(--green);border-color:transparent}
+.btn.danger{color:var(--red)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.actions .btn{padding:13px 8px}
+.status{min-height:42px;margin-top:13px;padding:11px 13px;border-radius:12px;background:#f7fbf8;font-size:12px;color:var(--muted);line-height:1.5}
+.status.good{color:var(--green);background:var(--softgreen)}
+.status.bad{color:var(--red);background:var(--softred)}
+.side{display:grid;gap:16px}
+.scan-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.scan-tabs .btn{display:flex;justify-content:center;align-items:center;gap:8px}
+.preview{width:100%;height:150px;object-fit:contain;border-radius:13px;background:#f7fbf8;border:1px dashed var(--line);display:none}
+.preview.show{display:block}
+.camera-box{display:none;margin-top:10px}
+.camera-box.show{display:block}
+.camera-box video{width:100%;max-height:220px;object-fit:cover;border-radius:12px;background:#111}
+.scan-note{font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 0}
+.level-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0}
+.level-row label{font-size:12px;color:var(--muted);font-weight:650}
+.level-row select{background:#f7fbf8;color:var(--ink);border:1px solid var(--line);padding:9px;border-radius:10px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.stat{padding:12px;border-radius:13px;background:#f7fbf8}
+.stat b{display:block;font-size:19px;color:var(--green)}
+.stat span{font-size:11px;color:var(--muted)}
+.keypad{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:12px}
+.keypad button{padding:11px 0;border-radius:10px;background:#f7fbf8;border:1px solid var(--line);color:var(--ink);font-weight:750}
+.footer{text-align:center;color:var(--muted);font-size:11px;padding:18px 0 4px}
+.hidden{display:none!important}
+@media(max-width:800px){#app{padding:16px}.layout{grid-template-columns:1fr}.panel{padding:16px}.board-wrap{max-width:520px}.cell{font-size:clamp(17px,5vw,26px)}}
+@media(max-width:380px){.brand h1{font-size:19px}.panel{padding:12px}.btn{padding:10px 11px}}
+</style>
+</head>
+<body>
+<main id="app">
+<header>
+<div class="brand">
+<div class="logo">9×9</div>
+<div><h1>Sudoku Master AI</h1><p>Scan it. Solve it. Master it.</p></div>
+</div>
+<div class="top-pill">✦ SMART SUDOKU SOLVER</div>
+</header>
+
+<div class="layout">
+<section class="panel">
+<div class="panel-head">
+<div><h2>Your Sudoku Board</h2><div class="sub">Tap a cell, then enter a number</div></div>
+<div class="top-pill" id="progress">0 / 81</div>
+</div>
+<div class="board-wrap"><div class="board" id="board" role="grid"></div></div>
+<div class="keypad" id="keypad"></div>
+<div class="actions">
+<button class="btn primary" id="solveBtn">✓ Solve Puzzle</button>
+<button class="btn light" id="hintBtn">✦ Get a Hint</button>
+<button class="btn" id="undoBtn">↶ Undo</button>
+<button class="btn" id="resetBtn">↻ Reset Board</button>
+<button class="btn" id="showBtn">◎ Show Solution</button>
+<button class="btn" id="copyBtn">▣ Copy Solution</button>
+<button class="btn danger" id="clearBtn">⌫ Clear Board</button>
+<button class="btn" id="newBtn">＋ New Puzzle</button>
+</div>
+<div class="status" id="status" aria-live="polite">Ready when you are. Enter a puzzle or scan an image to begin.</div>
+</section>
+
+<aside class="side">
+<section class="panel">
+<div class="panel-head">
+<div><h2>Scan a Puzzle</h2><div class="sub">Import a photo or use your camera</div></div>
+<span>📷</span>
+</div>
+<div class="scan-tabs">
+<button class="btn primary" id="cameraBtn">▣ Camera</button>
+<button class="btn" id="galleryBtn">▧ Gallery</button>
+</div>
+<input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg" class="hidden">
+<img id="preview" class="preview" alt="Selected Sudoku image">
+<div class="camera-box" id="cameraBox">
+<video id="video" autoplay playsinline muted></video>
+<div class="board-tools">
+<button class="btn primary" id="captureBtn">Take Photo</button>
+<button class="btn" id="stopCameraBtn">Close Camera</button>
+</div>
+</div>
+<div class="board-tools">
+<button class="btn primary" id="scanBtn" disabled>⌕ Scan Image</button>
+<button class="btn" id="scanAgainBtn" disabled>↻ Scan Again</button>
+<button class="btn" id="editCluesBtn" disabled>✎ Correct Scanned Clues</button>
+</div>
+<p class="scan-note">Best results: use a clear, straight-on image with the full 9×9 grid visible. Review detected digits before solving.</p>
+</section>
+
+<section class="panel">
+<div class="panel-head">
+<div><h2>Solver Settings</h2><div class="sub">Choose a puzzle level</div></div>
+<span>⚙</span>
+</div>
+<div class="level-row">
+<label for="difficulty">Difficulty</label>
+<select id="difficulty">
+<option value="easy">Easy</option>
+<option value="medium" selected>Medium</option>
+<option value="hard">Hard</option>
+<option value="expert">Expert</option>
+</select>
+</div>
+<div class="stat-grid">
+<div class="stat"><b id="timeStat">0.00s</b><span>Last solve time</span></div>
+<div class="stat"><b id="filledStat">0</b><span>Numbers entered</span></div>
+</div>
+<div class="board-tools"><button class="btn light" id="exampleBtn">Load Sample Puzzle</button></div>
+</section>
+</aside>
+</div>
+<div class="footer">Sudoku Master AI · Your puzzle stays in your browser</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+let grid=Array(81).fill(0),original=Array(81).fill(0),solution=null,selected=0,history=[],stream=null,lastImage=null,scannedMode=false;
+const sample='530070000600195000098000060800060003400803001700020006060000280000419005000080079';
+
+function say(msg,type=''){const el=$('status');el.textContent=msg;el.className='status '+type}
+function snapshot(){history.push({grid:grid.slice(),original:original.slice(),solution:solution?solution.slice():null});if(history.length>80)history.shift()}
+function render(){
+const board=$('board');board.innerHTML='';
+let conflicts=new Set();
+for(let i=0;i<81;i++){
+if(!grid[i])continue;
+let r=Math.floor(i/9),c=i%9;
+for(let j=0;j<81;j++){
+if(i===j||grid[j]!==grid[i])continue;
+let rr=Math.floor(j/9),cc=j%9;
+if(rr===r||cc===c||(Math.floor(rr/3)===Math.floor(r/3)&&Math.floor(cc/3)===Math.floor(c/3))){conflicts.add(i);conflicts.add(j)}
+}}
+for(let i=0;i<81;i++){
+let el=document.createElement('input');
+el.className='cell';el.type='text';el.inputMode='numeric';el.maxLength=1;el.autocomplete='off';
+el.value=grid[i]||'';
+if(original[i])el.classList.add('given');
+else if(grid[i]&&solution&&grid[i]===solution[i])el.classList.add('solved');
+if(conflicts.has(i))el.classList.add('conflict');
+if(i===selected)el.classList.add('selected');
+el.addEventListener('focus',()=>{selected=i;renderSelection()});
+el.addEventListener('input',e=>{
+if(original[i]&&!scannedMode){e.target.value=grid[i]||'';return}
+let n=parseInt(e.target.value,10);snapshot();
+grid[i]=n>=1&&n<=9?n:0;
+if(scannedMode)original[i]=grid[i];
+solution=null;render();
+});
+el.addEventListener('keydown',e=>{
+if(e.key==='ArrowRight'){e.preventDefault();focusCell(Math.min(80,i+1))}
+if(e.key==='ArrowLeft'){e.preventDefault();focusCell(Math.max(0,i-1))}
+if(e.key==='ArrowDown'){e.preventDefault();focusCell(Math.min(80,i+9))}
+if(e.key==='ArrowUp'){e.preventDefault();focusCell(Math.max(0,i-9))}
+if(e.key==='Backspace'||e.key==='Delete'){if(!original[i]){snapshot();grid[i]=0;solution=null;render()}}
+});
+board.appendChild(el);
+}
+$('progress').textContent=grid.filter(Boolean).length+' / 81';
+$('filledStat').textContent=grid.filter(Boolean).length;
+$('undoBtn').disabled=!history.length;
+}
+function renderSelection(){[...$('board').children].forEach((e,i)=>e.classList.toggle('selected',i===selected))}
+function focusCell(i){selected=i;let el=$('board').children[i];if(el)el.focus()}
+for(let n=1;n<=9;n++){let b=document.createElement('button');b.textContent=n;b.addEventListener('click',()=>enter(n));$('keypad').appendChild(b)}
+let erase=document.createElement('button');erase.textContent='⌫';erase.addEventListener('click',()=>enter(0));$('keypad').appendChild(erase);
+function enter(n){
+if(original[selected]&&!scannedMode){say('That number is a given clue and cannot be changed.','bad');return}
+snapshot();grid[selected]=n;if(scannedMode)original[selected]=n;
+solution=null;render();focusCell(selected);
+}
+function valid(g,pos,n){
+let r=Math.floor(pos/9),c=pos%9;
+for(let k=0;k<9;k++){
+if(g[r*9+k]===n||g[k*9+c]===n)return false;
+let rr=Math.floor(r/3)*3+Math.floor(k/3),cc=Math.floor(c/3)*3+k%3;
+if(g[rr*9+cc]===n)return false;
+}
+return true;
+}
+function consistent(g){
+for(let i=0;i<81;i++){
+let n=g[i];if(!n)continue;g[i]=0;let ok=valid(g,i,n);g[i]=n;if(!ok)return false;
+}
+return true;
+}
+function solveArray(input){
+let g=input.slice();if(!consistent(g))return null;
+function backtrack(){
+let best=-1,bestOpts=null;
+for(let i=0;i<81;i++)if(!g[i]){
+let opts=[];for(let n=1;n<=9;n++)if(valid(g,i,n))opts.push(n);
+if(!opts.length)return false;
+if(!bestOpts||opts.length<bestOpts.length){best=i;bestOpts=opts;if(opts.length===1)break}
+}
+if(best===-1)return true;
+for(let n of bestOpts){g[best]=n;if(backtrack())return true;g[best]=0}
+return false;
+}
+return backtrack()?g:null;
+}
+function countSolutions(input,limit=2){
+let g=input.slice(),count=0;if(!consistent(g))return 0;
+function walk(){
+if(count>=limit)return;
+let best=-1,optsBest=null;
+for(let i=0;i<81;i++)if(!g[i]){
+let opts=[];for(let n=1;n<=9;n++)if(valid(g,i,n))opts.push(n);
+if(!opts.length)return;
+if(!optsBest||opts.length<optsBest.length){best=i;optsBest=opts;if(opts.length===1)break}
+}
+if(best<0){count++;return}
+for(let n of optsBest){g[best]=n;walk();g[best]=0;if(count>=limit)return}
+}
+walk();return count;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function generatePuzzle(){
+let digits=shuffle([1,2,3,4,5,6,7,8,9]),bands=shuffle([0,1,2]),rows=[];
+bands.forEach(b=>shuffle([0,1,2]).forEach(r=>rows.push(b*3+r)));
+let stacks=shuffle([0,1,2]),cols=[];
+stacks.forEach(b=>shuffle([0,1,2]).forEach(c=>cols.push(b*3+c)));
+let solved=[];
+for(let r of rows)for(let c of cols)solved.push(digits[(r*3+Math.floor(r/3)+c)%9]);
+let puzzle=solved.slice(),targets={easy:38,medium:32,hard:27,expert:23},target=targets[$('difficulty').value]||32;
+let positions=shuffle(Array.from({length:81},(_,i)=>i));
+for(let pos of positions){if(puzzle.filter(Boolean).length<=target)break;let old=puzzle[pos];puzzle[pos]=0;if(countSolutions(puzzle)!==1)puzzle[pos]=old}
+snapshot();scannedMode=false;$('editCluesBtn').disabled=true;
+grid=puzzle;original=puzzle.slice();solution=solved;render();
+say('New '+$('difficulty').value+' puzzle generated. It has one unique solution.','good');
+}
+function doSolve(show=false){
+let t=performance.now(),ans=solveArray(grid),elapsed=(performance.now()-t)/1000;
+$('timeStat').textContent=elapsed.toFixed(3)+'s';
+if(!consistent(grid)){say('There are conflicting numbers. Red cells show the problem. Correct them before solving.','bad');return}
+if(!ans){say('This puzzle has no valid solution. Check the entered or scanned numbers.','bad');return}
+if(!show)snapshot();solution=ans;grid=ans.slice();render();
+say('Solved successfully in '+elapsed.toFixed(3)+' seconds.','good');
+}
+$('solveBtn').onclick=()=>doSolve();
+$('showBtn').onclick=()=>doSolve(true);
+$('hintBtn').onclick=()=>{
+if(!consistent(grid)){say('Fix conflicting numbers before requesting a hint.','bad');return}
+let ans=solveArray(grid);if(!ans){say('No solution found for this puzzle.','bad');return}
+let empty=grid.map((v,i)=>v?-1:i).filter(i=>i>=0);
+if(!empty.length){say('The board is already complete.','good');return}
+let i=empty[Math.floor(Math.random()*empty.length)];
+snapshot();grid[i]=ans[i];solution=ans;render();focusCell(i);
+say(`Hint: row ${Math.floor(i/9)+1}, column ${i%9+1} is ${ans[i]}.`,'good');
+};
+$('undoBtn').onclick=()=>{
+let s=history.pop();if(!s)return;grid=s.grid;original=s.original;solution=s.solution;render();say('Last change undone.','good');
+};
+$('resetBtn').onclick=()=>{snapshot();grid=original.slice();solution=null;render();say('Board reset to the original clues.','good')};
+$('clearBtn').onclick=()=>{snapshot();grid=Array(81).fill(0);original=grid.slice();solution=null;render();say('Board cleared.','good')};
+$('newBtn').onclick=()=>generatePuzzle();
+$('copyBtn').onclick=async()=>{
+let ans=solution||solveArray(grid);if(!ans){say('Solve a valid puzzle before copying its solution.','bad');return}
+let text=Array.from({length:9},(_,r)=>ans.slice(r*9,r*9+9).join(' ')).join('\n');
+try{await navigator.clipboard.writeText(text);say('Completed solution copied to clipboard.','good')}
+catch(e){say('Clipboard access unavailable. '+text,'bad')}
+};
+$('exampleBtn').onclick=()=>loadPuzzle(sample);
+function loadPuzzle(s){
+snapshot();scannedMode=false;$('editCluesBtn').disabled=true;
+grid=[...s].map(Number);original=grid.slice();solution=null;render();
+say('Sample puzzle loaded. Press Solve Puzzle when ready.','good');
+}
+
+// PHOTO UPLOAD AND CAMERA
+$('galleryBtn').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>{
+let f=e.target.files&&e.target.files[0];if(!f)return;
+if(!/^image\/(jpeg|png)$/.test(f.type)){say('Please choose a JPG or PNG image.','bad');return}
+loadImage(f);
+};
+function loadImage(file){
+let url=URL.createObjectURL(file),img=new Image();
+img.onload=()=>{
+lastImage=img;$('preview').src=url;$('preview').classList.add('show');
+$('scanBtn').disabled=false;$('scanAgainBtn').disabled=false;
+$('cameraBox').classList.remove('show');
+say('Image loaded. Press Scan Image to detect the Sudoku.','good');
+};
+img.onerror=()=>say('Could not open this image. Try another JPG or PNG.','bad');
+img.src=url;
+}
+$('cameraBtn').onclick=async()=>{
+try{
+if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera access requires HTTPS.');
+stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+$('video').srcObject=stream;$('cameraBox').classList.add('show');
+say('Camera ready. Keep the full Sudoku grid inside the frame.','good');
+}catch(e){say('Camera unavailable: '+e.message+'. Use Gallery instead.','bad')}
+};
+$('stopCameraBtn').onclick=stopCamera;
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('cameraBox').classList.remove('show')}
+$('captureBtn').onclick=()=>{
+let v=$('video');if(!v.videoWidth){say('Camera is still starting. Try again.','bad');return}
+let c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+c.getContext('2d').drawImage(v,0,0);
+c.toBlob(b=>{if(b)loadImage(new File([b],'sudoku-camera.jpg',{type:'image/jpeg'}))},'image/jpeg',.92);
+stopCamera();
+};
+
+// GRID RECOGNITION
+function canvasImage(img){
+let c=document.createElement('canvas'),scale=Math.min(1,1200/Math.max(img.width,img.height));
+c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+let x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,c.width,c.height);
+return {c,x,w:c.width,h:c.height};
+}
+function projections(x,w,h){
+let d=x.getImageData(0,0,w,h).data,rows=new Float32Array(h),cols=new Float32Array(w);
+for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){
+let p=(y*w+xx)*4,lum=.299*d[p]+.587*d[p+1]+.114*d[p+2];
+if(lum<145){rows[y]++;cols[xx]++}
+}
+return {rows,cols};
+}
+function findAxis(a,other){
+let threshold=other*.38,peaks=[];
+for(let i=0;i<a.length;i++)if(a[i]>threshold)peaks.push(i);
+let groups=[];
+for(let p of peaks){
+let g=groups[groups.length-1];
+if(g&&p-g.end<=4){g.end=p;g.sum+=p;g.count++}
+else groups.push({start:p,end:p,sum:p,count:1});
+}
+let centers=groups.map(g=>Math.round(g.sum/g.count)),best=null;
+for(let i=0;i<centers.length;i++)for(let j=i+9;j<centers.length;j++){
+let seq=centers.slice(i,j+1);if(seq.length<10)continue;
+let gaps=seq.slice(1).map((v,k)=>v-seq[k]),avg=gaps.reduce((a,b)=>a+b,0)/gaps.length;
+let variance=gaps.reduce((a,b)=>a+(b-avg)**2,0)/gaps.length;
+if(avg<8||Math.sqrt(variance)/avg>.28)continue;
+let score=seq.length*100-Math.sqrt(variance)*10;
+if(!best||score>best.score)best={seq,score};
+}
+if(!best)return null;
+let s=best.seq;return [s[0],s[s.length-1]];
+}
+
+// DIGIT RECOGNITION
+const fontList=['Arial','Verdana','Tahoma','Georgia','serif','sans-serif'];
+let templates={};
+function makeTemplates(){
+for(let font of fontList)for(let n=1;n<=9;n++){
+let c=document.createElement('canvas');c.width=40;c.height=52;
+let x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,40,52);
+x.fillStyle='#000';x.font=`bold 38px ${font}`;x.textAlign='center';x.textBaseline='middle';
+x.fillText(String(n),20,26);
+templates[font+'-'+n]=normalizeGlyph(x.getImageData(0,0,40,52).data,40,52);
+}
+}
+function normalizeGlyph(data,w,h){
+let minX=w,minY=h,maxX=0,maxY=0;
+for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+let p=(y*w+x)*4;if(data[p]<100){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+}
+if(maxX<minX)return null;
+let out=new Float32Array(20*28),bw=maxX-minX+1,bh=maxY-minY+1;
+for(let yy=0;yy<28;yy++)for(let xx=0;xx<20;xx++){
+let sx=minX+Math.min(bw-1,Math.floor(xx/20*bw)),sy=minY+Math.min(bh-1,Math.floor(yy/28*bh));
+out[yy*20+xx]=data[(sy*w+sx)*4]<100?1:0;
+}
+return out;
+}
+function recognizeCell(ctx,x,y,w,h){
+let padX=w*.24,padY=h*.17,sw=Math.max(1,Math.floor(w-2*padX)),sh=Math.max(1,Math.floor(h-2*padY));
+let im=ctx.getImageData(Math.round(x+padX),Math.round(y+padY),sw,sh),d=im.data;
+let dark=0,minX=sw,minY=sh,maxX=-1,maxY=-1;
+for(let yy=0;yy<sh;yy++)for(let xx=0;xx<sw;xx++){
+let p=(yy*sw+xx)*4,lum=.299*d[p]+.587*d[p+1]+.114*d[p+2];
+if(lum<115){dark++;minX=Math.min(minX,xx);maxX=Math.max(maxX,xx);minY=Math.min(minY,yy);maxY=Math.max(maxY,yy)}
+}
+if(dark<Math.max(9,sw*sh*.009)||maxX<0)return 0;
+let bw=maxX-minX+1,bh=maxY-minY+1;if(bw<2||bh<5||bh>sh*.9)return 0;
+let crop=new Uint8ClampedArray(bw*bh*4);
+for(let yy=0;yy<bh;yy++)for(let xx=0;xx<bw;xx++){
+let src=((minY+yy)*sw+minX+xx)*4,dst=(yy*bw+xx)*4;
+let v=(.299*d[src]+.587*d[src+1]+.114*d[src+2])<145?0:255;
+crop[dst]=crop[dst+1]=crop[dst+2]=v;crop[dst+3]=255;
+}
+let glyph=normalizeGlyph(crop,bw,bh);if(!glyph)return 0;
+if(!Object.keys(templates).length)makeTemplates();
+let best=Infinity,bestN=0;
+for(let n=1;n<=9;n++){
+let score=Infinity;
+for(let font of fontList){
+let t=templates[font+'-'+n],diff=0;
+for(let k=0;k<glyph.length;k++)diff+=Math.abs(glyph[k]-t[k]);
+score=Math.min(score,diff/glyph.length);
+}
+if(score<best){best=score;bestN=n}
+}
+return best<.34?bestN:0;
+}
+
+// OCR SCAN
+async function scanImage(){
+if(!lastImage)return;
+$('scanBtn').disabled=true;$('scanAgainBtn').disabled=true;
+say('Finding the Sudoku board and reading digits…');
+try{
+let {x,w,h}=canvasImage(lastImage),{rows,cols}=projections(x,w,h);
+let yb=findAxis(rows,w),xb=findAxis(cols,h);
+if(!xb||!yb)throw Error('Could not locate the full 9×9 grid. Crop the photo around the board and try again.');
+let [x0,x1]=xb,[y0,y1]=yb,cellW=(x1-x0)/9,cellH=(y1-y0)/9;
+if(Math.abs(cellW-cellH)/Math.max(cellW,cellH)>.35)throw Error('The detected grid is not square. Please crop the image so the full Sudoku board is visible.');
+if(!window.Tesseract)throw Error('OCR library did not load. Check your internet connection and try again.');
+let worker=await Tesseract.createWorker('eng',1,{logger:m=>{
+if(m.status==='recognizing text')say('Reading digits… '+Math.round((m.progress||0)*100)+'%');
+}});
+await worker.setParameters({tessedit_char_whitelist:'123456789',classify_bln_numeric_mode:'1'});
+let found=[];
+for(let r=0;r<9;r++)for(let col=0;col<9;col++){
+let padX=cellW*.12,padY=cellH*.12;
+let sx=Math.round(x0+col*cellW+padX),sy=Math.round(y0+r*cellH+padY);
+let sw=Math.round(cellW-2*padX),sh=Math.round(cellH-2*padY);
+let cellCanvas=document.createElement('canvas');
+cellCanvas.width=Math.max(1,sw*3);cellCanvas.height=Math.max(1,sh*3);
+let cx=cellCanvas.getContext('2d');cx.imageSmoothingEnabled=false;
+cx.drawImage(x.canvas,sx,sy,sw,sh,0,0,cellCanvas.width,cellCanvas.height);
+let result=await worker.recognize(cellCanvas);
+let raw=(result.data.text||'').replace(/[^1-9]/g,'');
+let conf=result.data.confidence||0;
+found.push(conf>=35&&raw.length?Number(raw[0]):0);
+}
+await worker.terminate();
+let count=found.filter(Boolean).length;
+if(count<8)throw Error('Only '+count+' digits were recognized. Try a clearer, straight screenshot with larger numbers.');
+snapshot();scannedMode=true;$('editCluesBtn').disabled=false;
+$('editCluesBtn').textContent='✓ Scanned Clues Editable';
+grid=found;original=found.slice();solution=null;render();
+let conflict=!consistent(grid);
+say(`OCR scan complete: ${count} clues recognized. ${conflict?'Red cells conflict; edit them before solving.':'Review the clues, then press Solve Puzzle.'}`,conflict?'bad':'good');
+}catch(e){say(e.message,'bad')}
+finally{$('scanBtn').disabled=false;$('scanAgainBtn').disabled=false}
+}
+$('scanBtn').onclick=scanImage;
+$('scanAgainBtn').onclick=scanImage;
+$('editCluesBtn').onclick=()=>{
+scannedMode=!scannedMode;
+$('editCluesBtn').textContent=scannedMode?'✓ Scanned Clues Editable':'✎ Correct Scanned Clues';
+say(scannedMode?'Correction mode on: tap any recognized clue and replace its digit.':'Correction mode off.','good');
+};
+
+loadPuzzle(sample);
+say('Welcome! Load a sample, enter a puzzle, or scan a Sudoku photo.');
+})();
+</script>
+</body>
+</html>
